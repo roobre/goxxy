@@ -69,8 +69,9 @@ func (g *Goxxy) proxy(rw http.ResponseWriter, r *http.Request) {
 		url += r.RemoteAddr
 	}
 
-	log.Printf("Handling request to %s", url)
+	url += r.RequestURI
 
+	log.Printf("Handling request to %s", url)
 	newreq, _ := http.NewRequest(r.Method, url, r.Body)
 
 	response, err := g.Client.Do(newreq)
