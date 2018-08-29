@@ -9,7 +9,7 @@ import (
 )
 
 type RegexMangler struct {
-	headerRegexes map[*regexp.Regexp][]regexpReplace
+	headerRegexes map[string][]regexpReplace
 	bodyRegexes   []regexpReplace
 }
 
@@ -18,10 +18,9 @@ type regexpReplace struct {
 	Replace string
 }
 
-func (rm *RegexMangler) AddHeaderRegex(matchHeader, search, replace string) *RegexMangler {
-	headerRegex := regexp.MustCompile(matchHeader)
+func (rm *RegexMangler) AddHeaderRegex(header, search, replace string) *RegexMangler {
 	searchRegex := regexp.MustCompile(search)
-	rm.headerRegexes[headerRegex] = append(rm.headerRegexes[headerRegex], regexpReplace{searchRegex, replace})
+	rm.headerRegexes[header] = append(rm.headerRegexes[header], regexpReplace{searchRegex, replace})
 
 	return rm
 }
@@ -34,16 +33,15 @@ func (rm *RegexMangler) AddBodyRegex(search, replace string) *RegexMangler {
 }
 
 func (rm *RegexMangler) Mangle(response *http.Response) *http.Response {
-	for nameRegex, valueRegexes := range rm.headerRegexes {
+	for headerName, valueRegexes := range rm.headerRegexes {
 		for name, headers := range response.Header {
 			// TODO: Paralelize this
-			if nameRegex.MatchString(name) {
-				for _, header := range headers {
-					for _, valueRegex := range valueRegexes {
-						// Assume no need to make a new string
-						header = valueRegex.Regexp.ReplaceAllString(header, valueRegex.Replace)
-					}
+			if name == headerName {
+				//for _, header := range headers { // Ignore multi-valued headers for now
+				for _, valueRegex := range valueRegexes {
+					headers[0] = valueRegex.Regexp.ReplaceAllString(headers[0], valueRegex.Replace)
 				}
+				//}
 			}
 		}
 	}

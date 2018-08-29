@@ -26,6 +26,7 @@ func (mf ManglerFunc) Mangle(response *http.Response) *http.Response {
 
 type Goxxy struct {
 	Client      *http.Client
+	ErrHandler  http.Handler
 	middlewares []Middleware
 	manglers    []Mangler
 }
@@ -59,29 +60,32 @@ func (g *Goxxy) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 
 func (g *Goxxy) proxy(rw http.ResponseWriter, r *http.Request) {
 	var url string
-	url = "http://"
-	if r.Host != "" {
-		url += r.Host
-		//if parts := strings.Split(r.RemoteAddr, ":"); len(parts) > 1 {
-		//	url += ":" + parts[1]
-		//}
+	if r.TLS != nil {
+		url += "https://"
 	} else {
-		url += r.RemoteAddr
+		url += "http://"
 	}
 
-	url += r.RequestURI
+	url += r.Host + r.RequestURI
 
 	log.Printf("Handling request to %s", url)
 	newreq, _ := http.NewRequest(r.Method, url, r.Body)
 
 	response, err := g.Client.Do(newreq)
 	if err != nil {
+		// Use custom handler if set
+		if g.ErrHandler != nil {
+			g.ErrHandler.ServeHTTP(rw, r)
+			return
+		}
+
 		rw.WriteHeader(http.StatusInternalServerError)
 		log.Printf("error during request: %v", err)
 		return
 	}
 
-	for i := len(g.manglers) - 1; i >= 0; i-- {
+	//for i := len(g.manglers) - 1; i >= 0; i-- {
+	for i := range g.manglers {
 		response = g.manglers[i].Mangle(response)
 	}
 
