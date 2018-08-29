@@ -1,9 +1,13 @@
 package mangler
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 type FormDumper struct {
@@ -48,12 +52,17 @@ func (d *FormDumper) Mangle(response *http.Response) *http.Response {
 		response.Request.ParseForm() // Idempotent
 
 		// TODO Use reflect for this?
-		keys := make(map[string]struct{})
+		keys := make(map[string]interface{})
 		for key := range response.Request.Form {
 			keys[key] = struct{}{}
 		}
-		// TODO: Parse from response too
-		// TODO: Parse JSON if ctype || tryhardJson
+
+		if d.TryhardJson || strings.Contains(response.Header.Get("content-type"), "json") {
+			newbody, _ := ioutil.ReadAll(response.Body)
+			json.Unmarshal(newbody, keys)
+
+			response.Body = ioutil.NopCloser(bytes.NewReader(newbody))
+		}
 
 		var dump bool
 		for i := 0; !dump && i < len(d.keywordSets); i++ {
@@ -69,7 +78,7 @@ func (d *FormDumper) Mangle(response *http.Response) *http.Response {
 	return response
 }
 
-func shouldDump(ks *keywordSet, keywords map[string]struct{}) bool {
+func shouldDump(ks *keywordSet, keywords map[string]interface{}) bool {
 	if len(keywords) < 1 {
 		return false
 	}
