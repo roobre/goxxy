@@ -11,6 +11,7 @@ import (
 type RegexMangler struct {
 	headerRegexes map[string][]regexpReplace
 	bodyRegexes   []regexpReplace
+	MaxSize       int64
 }
 
 type regexpReplace struct {
@@ -33,6 +34,15 @@ func (rm *RegexMangler) AddBodyRegex(search, replace string) *RegexMangler {
 }
 
 func (rm *RegexMangler) Mangle(response *http.Response) *http.Response {
+	maxSize := rm.MaxSize
+	if maxSize == 0 {
+		maxSize = responseMaxSizeDefault
+	}
+
+	if response.ContentLength > maxSize {
+		return response
+	}
+
 	for headerName, valueRegexes := range rm.headerRegexes {
 		for name, headers := range response.Header {
 			// TODO: Paralelize this
