@@ -15,6 +15,7 @@ type FormDumper struct {
 	TryhardJson        bool // TODO
 	IgnoreResponseCode bool
 	Output             io.Writer
+	MaxSize            int64
 }
 
 type keywordSet struct {
@@ -58,10 +59,17 @@ func (d *FormDumper) Mangle(response *http.Response) *http.Response {
 		}
 
 		if d.TryhardJson || strings.Contains(response.Header.Get("content-type"), "json") {
-			newbody, _ := ioutil.ReadAll(response.Body)
-			json.Unmarshal(newbody, keys)
+			maxSize := d.MaxSize
+			if maxSize == 0 {
+				maxSize = responseMaxSizeDefault
+			}
 
-			response.Body = ioutil.NopCloser(bytes.NewReader(newbody))
+			if response.ContentLength <= maxSize {
+				newbody, _ := ioutil.ReadAll(response.Body)
+				json.Unmarshal(newbody, keys)
+
+				response.Body = ioutil.NopCloser(bytes.NewReader(newbody))
+			}
 		}
 
 		var dump bool
