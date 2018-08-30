@@ -1,11 +1,9 @@
 package modules
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 )
@@ -60,10 +58,8 @@ func (d *FormDumper) Mangle(response *http.Response) *http.Response {
 
 		if d.TryhardJson || strings.Contains(response.Header.Get("content-type"), "json") {
 			if response.ContentLength <= d.maxSize() {
-				newbody, _ := ioutil.ReadAll(response.Body)
-				json.Unmarshal(newbody, keys)
-
-				response.Body = ioutil.NopCloser(bytes.NewReader(newbody))
+				buffer, _ := copyBody(response)
+				json.Unmarshal(buffer, keys)
 			}
 		}
 

@@ -53,7 +53,8 @@ func (rm *RegexMangler) Mangle(response *http.Response) *http.Response {
 
 	// Check len since we're copying body here
 	if len(rm.bodyRegexes) > 0 {
-		fullBody, _ := ioutil.ReadAll(response.Body)
+		fullBody, _ := copyBody(response)
+
 		for _, regex := range rm.bodyRegexes {
 			log.Printf("Searching for %s", regex.Regexp.String())
 			fullBody = regex.Regexp.ReplaceAll(fullBody, []byte(regex.Replace))
