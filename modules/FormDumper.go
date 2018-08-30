@@ -1,4 +1,4 @@
-package mangler
+package modules
 
 import (
 	"bytes"
@@ -12,10 +12,10 @@ import (
 
 type FormDumper struct {
 	keywordSets        []keywordSet
-	TryhardJson        bool // TODO
+	TryhardJson        bool
 	IgnoreResponseCode bool
 	Output             io.Writer
-	MaxSize            int64
+	maxSizer
 }
 
 type keywordSet struct {
@@ -59,12 +59,7 @@ func (d *FormDumper) Mangle(response *http.Response) *http.Response {
 		}
 
 		if d.TryhardJson || strings.Contains(response.Header.Get("content-type"), "json") {
-			maxSize := d.MaxSize
-			if maxSize == 0 {
-				maxSize = responseMaxSizeDefault
-			}
-
-			if response.ContentLength <= maxSize {
+			if response.ContentLength <= d.maxSize() {
 				newbody, _ := ioutil.ReadAll(response.Body)
 				json.Unmarshal(newbody, keys)
 
