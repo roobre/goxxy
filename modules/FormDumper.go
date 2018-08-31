@@ -82,21 +82,23 @@ func shouldDump(ks *keywordSet, keywords map[string]interface{}) bool {
 		return false
 	}
 
-	// When I wrote this blah blah blah
-	isAllCase := ks.Type == keysetAll
-	contains := isAllCase
-	for wanted := range ks.Keywords {
-		_, ok := keywords[wanted]
-		if isAllCase {
-			contains = contains && ok
-		} else {
-			contains = contains || ok
+	if ks.Type == keysetAll {
+		for wanted := range ks.Keywords {
+			_, ok := keywords[wanted]
+			if !ok {
+				return false
+			}
 		}
 
-		if (isAllCase && !contains) || (!isAllCase && contains) {
-			break
+		return true
+	} else {
+		for wanted := range ks.Keywords {
+			_, ok := keywords[wanted]
+			if ok {
+				return true
+			}
 		}
+
+		return false
 	}
-
-	return contains
 }
