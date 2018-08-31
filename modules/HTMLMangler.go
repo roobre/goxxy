@@ -39,6 +39,7 @@ func (h *HTMLMangler) Mangle(response *http.Response) *http.Response {
 		modifier.ModifyHTML(document)
 	}
 
+	response.Body.Close()
 	response.Body = ioutil.NopCloser(ioutil.NopCloser(strings.NewReader(document.Text())))
 	return response
 }

@@ -53,7 +53,7 @@ func (rm *RegexMangler) Mangle(response *http.Response) *http.Response {
 
 	// Check len since we're copying body here
 	if len(rm.bodyRegexes) > 0 {
-		fullBody, _ := copyBody(response)
+		fullBody := copyBody(response)
 
 		for _, regex := range rm.bodyRegexes {
 			log.Printf("Searching for %s", regex.Regexp.String())
