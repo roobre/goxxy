@@ -4,10 +4,14 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"time"
 )
 
-var nopGoxxy = Goxxy{Client: http.DefaultClient}
+var defaultClient = &http.Client{Timeout: 8 * time.Second}
+var nopGoxxy = Goxxy{Client: defaultClient}
 
+// Middleware is the de-facto standard interface for http middleware: Receives a handler, and returns another (typically a closure).
+// Middlewares in Goxxy are used to modify a request before it is sent to the final server.
 type Middleware interface {
 	Middleware(handler http.Handler) http.Handler
 }
@@ -17,6 +21,9 @@ func (mf MiddlewareFunc) Middleware(handler http.Handler) http.Handler {
 	return mf(handler)
 }
 
+// Mangler is anything which can take an http.Response, do something with it, and then return it.
+// Manglers which read Response.Body must care of leaving it untouched in the response they return, to ensure other
+//  manglers don't read partial responses.
 type Mangler interface {
 	Mangle(response *http.Response) *http.Response
 }
@@ -26,6 +33,7 @@ func (mf ManglerFunc) Mangle(response *http.Response) *http.Response {
 	return mf(response)
 }
 
+// Matcher is anything which can discern if a request should be intercepted or not
 type Matcher interface {
 	Match(*http.Request) bool
 }
@@ -46,7 +54,7 @@ type Goxxy struct {
 }
 
 func New() *Goxxy {
-	return &Goxxy{Client: http.DefaultClient}
+	return &Goxxy{Client: defaultClient}
 }
 
 func (g *Goxxy) AddMiddleware(mw Middleware) {

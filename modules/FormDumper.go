@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// FormDumper logs to its Output request and response fields if they match their rules
 type FormDumper struct {
 	keywordSets        []keywordSet
 	TryhardJson        bool
@@ -26,10 +27,12 @@ const (
 	keysetAll
 )
 
+// Add a set of keywords which will be compared against the requests and responses passing through the mangler. Those which contain all the keywords will be logged
 func (d *FormDumper) All(keywords ...string) {
 	d.add(keysetAll, keywords)
 }
 
+// Add a set of keywords which will be compared against the requests and responses passing through the mangler. Those which contain any of the keywords will be logged
 func (d *FormDumper) Any(keywords ...string) {
 	d.add(keysetAny, keywords)
 }
@@ -58,7 +61,7 @@ func (d *FormDumper) Mangle(response *http.Response) *http.Response {
 
 		if d.TryhardJson || strings.Contains(response.Header.Get("content-type"), "json") {
 			if response.ContentLength <= d.maxSize() {
-				buffer := copyBody(response)
+				buffer := CopyBody(response)
 				json.Unmarshal(buffer, keys)
 			}
 		}

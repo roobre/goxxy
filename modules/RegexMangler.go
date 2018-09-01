@@ -8,6 +8,7 @@ import (
 	"regexp"
 )
 
+// RegexMangler is a collection of regexes to apply to responses which will be set back to the client, both to the headers and body.
 type RegexMangler struct {
 	headerRegexes map[string][]regexpReplace
 	bodyRegexes   []regexpReplace
@@ -19,6 +20,7 @@ type regexpReplace struct {
 	Replace string
 }
 
+// AddHeaderRegex adds a new regex which will be applied to the headers sent in the response. header is the header name and must match verbatim.
 func (rm *RegexMangler) AddHeaderRegex(header, search, replace string) *RegexMangler {
 	searchRegex := regexp.MustCompile(search)
 	rm.headerRegexes[header] = append(rm.headerRegexes[header], regexpReplace{searchRegex, replace})
@@ -26,6 +28,7 @@ func (rm *RegexMangler) AddHeaderRegex(header, search, replace string) *RegexMan
 	return rm
 }
 
+// AddBodyRegex adds a new regex which will be applied to the response body.
 func (rm *RegexMangler) AddBodyRegex(search, replace string) *RegexMangler {
 	searchRegex := regexp.MustCompile(search)
 	rm.bodyRegexes = append(rm.bodyRegexes, regexpReplace{searchRegex, replace})
@@ -53,7 +56,7 @@ func (rm *RegexMangler) Mangle(response *http.Response) *http.Response {
 
 	// Check len since we're copying body here
 	if len(rm.bodyRegexes) > 0 {
-		fullBody := copyBody(response)
+		fullBody := CopyBody(response)
 
 		for _, regex := range rm.bodyRegexes {
 			log.Printf("Searching for %s", regex.Regexp.String())
