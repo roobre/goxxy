@@ -36,24 +36,23 @@ func (rm *RegexMangler) AddBodyRegex(search, replace string) *RegexMangler {
 	return rm
 }
 
+func (rm *RegexMangler) Middleware(handler http.Handler) http.Handler {
+	// TODO: Support editing body of the request too
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rm.changeHeaders(r.Header)
+
+		handler.ServeHTTP(w, r)
+	})
+}
+
 func (rm *RegexMangler) Mangle(response *http.Response) *http.Response {
 	if response.ContentLength > rm.maxSize() {
 		return response
 	}
 
-	for headerName, valueRegexes := range rm.headerRegexes {
-		for name, headers := range response.Header {
-			// TODO: Paralelize this
-			if name == headerName {
-				//for _, header := range headers { // Ignore multi-valued headers for now
-				for _, valueRegex := range valueRegexes {
-					headers[0] = valueRegex.Regexp.ReplaceAllString(headers[0], valueRegex.Replace)
-				}
-				//}
-			}
-		}
-	}
+	rm.changeHeaders(response.Header)
 
+	// TODO: Separate this
 	// Check len since we're copying body here
 	if len(rm.bodyRegexes) > 0 {
 		fullBody := CopyBody(response)
@@ -67,4 +66,19 @@ func (rm *RegexMangler) Mangle(response *http.Response) *http.Response {
 	}
 
 	return response
+}
+
+func (rm *RegexMangler) changeHeaders(header http.Header) {
+	for headerName, valueRegexes := range rm.headerRegexes {
+		for name, headers := range header {
+			// TODO: Paralelize this
+			if name == headerName {
+				//for _, header := range headers { // Ignore multi-valued headers for now
+				for _, valueRegex := range valueRegexes {
+					headers[0] = valueRegex.Regexp.ReplaceAllString(headers[0], valueRegex.Replace)
+				}
+				//}
+			}
+		}
+	}
 }
