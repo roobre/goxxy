@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"os"
 	"roob.re/goxxy"
@@ -8,17 +9,26 @@ import (
 )
 
 func main() {
-	goxxy := goxxy.New()
+	proxy := goxxy.New()
+
+	proxy.AddMangler(modules.EchoMangler("Parent", os.Stdout))
 
 	rm := &modules.RegexMangler{}
 	rm.AddBodyRegex(`https?://(?:\w+\.\w+)+/`, "https://www.roobre.es/")
-	goxxy.AddMangler(rm)
+	proxy.AddMangler(rm)
 
-	formdataFile, _ := os.Create("/tmp/formdata.txt")
-	fd := &modules.FormDumper{Output: os.Stdout}
-	fd.Output = formdataFile
-	fd.All("user", "pwd")
-	goxxy.AddMangler(fd)
+	child1 := proxy.Child()
+	child1.Match(goxxy.HostMatcher(`(\w+\.)*google\.\w{2,3}`))
+	child1.AddMangler(modules.EchoMangler("google anything:", os.Stdout))
 
-	http.ListenAndServe(":8080", goxxy)
+	child11 := child1.Child()
+	child11.Match(goxxy.HostMatcher(`google.es`))
+	child11.AddMangler(modules.EchoMangler("google.es:", os.Stdout))
+
+	child2 := proxy.Child()
+	child2.Match(goxxy.HostMatcher(`(\w+\.)*facebook\.\w{2,3}`))
+	child2.AddMangler(modules.EchoMangler("facebook anything:", os.Stdout))
+
+	log.Println("Starting Goxxy on :8080")
+	http.ListenAndServe(":8080", proxy)
 }
