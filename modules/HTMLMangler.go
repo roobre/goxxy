@@ -1,4 +1,4 @@
-package modules
+package modules // import "roob.re/goxxy/modules"
 
 import (
 	"github.com/PuerkitoBio/goquery"

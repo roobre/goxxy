@@ -1,4 +1,4 @@
-package goxxy
+package goxxy // import "roob.re/goxxy"
 
 import (
 	"net/http"
