@@ -93,14 +93,18 @@ func (g *Goxxy) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (g *Goxxy) demux(r *http.Request) http.Handler {
-	if len(g.matchers) == 0 && len(g.children) == 0 {
-		// Return inmediately if empty
-		return http.HandlerFunc(g.proxy)
-	}
-
 	var handler http.Handler = nil
 
-	// Store myself if I match
+	if len(g.matchers) == 0 {
+		if len(g.children) == 0 {
+			// Return inmediately if empty
+			return http.HandlerFunc(g.proxy)
+		}
+		// Default as myself if no matchers
+		handler = http.HandlerFunc(g.proxy)
+	}
+
+	// Store myself if I match, noop for empty list
 	for _, c := range g.matchers {
 		if c.Match(r) {
 			handler = http.HandlerFunc(g.proxy)
