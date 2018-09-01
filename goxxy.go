@@ -33,6 +33,13 @@ func (mf ManglerFunc) Mangle(response *http.Response) *http.Response {
 	return mf(response)
 }
 
+// A module is anything which can operate both as a Middleware and as a Mangler
+// This is, for now, unused. But I wanted to coin the term, for documentation readability purposes
+type Module interface {
+	Mangler
+	Middleware
+}
+
 // Matcher is anything which can discern if a request should be intercepted or not
 type Matcher interface {
 	Match(*http.Request) bool
@@ -44,6 +51,7 @@ func (mf MatcherFunc) Match(r *http.Request) bool {
 	return mf(r)
 }
 
+// Goxxy is an http proxy which applies changes to requests and responses before and after sending them to the original server.
 type Goxxy struct {
 	Client      *http.Client
 	ErrHandler  http.Handler
@@ -53,32 +61,43 @@ type Goxxy struct {
 	children    []Goxxy
 }
 
+// New returns a fresh instance of Goxxy, with the default HTTP Client.
 func New() *Goxxy {
 	return &Goxxy{Client: defaultClient}
 }
 
+// AddMiddleware inserts a Module which will read and/or modify request before they are sent upstream
 func (g *Goxxy) AddMiddleware(mw Middleware) {
 	g.middlewares = append(g.middlewares, mw)
 }
+
+// AddMiddlewareFunc inserts a Module which will read and/or modify request before they are sent upstream
 func (g *Goxxy) AddMiddlewareFunc(mw MiddlewareFunc) {
 	g.middlewares = append(g.middlewares, mw)
 }
 
+// AddMangler inserts a Module which will read and/or modify responses after they're read from the target server and before they are sent back to the client
 func (g *Goxxy) AddMangler(mg Mangler) {
 	g.manglers = append(g.manglers, mg)
 }
+
+// AddManglerFunc inserts a Module which will read and/or modify responses after they're read from the target server and before they are sent back to the client
 func (g *Goxxy) AddManglerFunc(mg ManglerFunc) {
 	g.manglers = append(g.manglers, mg)
 }
 
+// Match adds a new matcher, which can discern if a request should be handled by this proxy or not. Multiple Matchers are OR'ed together.
+// A Goxxy with no Matchers will match anything, but give priority to its children.
 func (g *Goxxy) Match(m Matcher) {
 	g.matchers = append(g.matchers, m)
 }
 
+// MatchFunc adds a new matcher, which can discern if a request should be handled by this proxy or not. Multiple Matchers are OR'ed together.
 func (g *Goxxy) MatchFunc(m MatcherFunc) {
 	g.matchers = append(g.matchers, m)
 }
 
+// Child creates adds a new child Goxxy and returns it.
 func (g *Goxxy) Child() *Goxxy {
 	g.children = append(g.children, Goxxy{Client: g.Client, ErrHandler: g.ErrHandler})
 	return &g.children[len(g.children)-1]
