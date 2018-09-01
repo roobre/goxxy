@@ -6,6 +6,7 @@ import (
 )
 
 // HeaderChanger will add, append, or remove Headers before the request is sent to the server or before the response is sent to the client.
+// HeaderChanger is just a map[string]string and can me manipulated as so.
 // Keys (header names) starting with "-" (e.g. "-Server") will cause the header to be deleted. Keys starting with "+", will cause the value to be appended to the header name, and keys without any prefix will set the value regardless of any previous value.
 type HeaderChanger map[string]string
 

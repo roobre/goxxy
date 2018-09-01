@@ -10,10 +10,10 @@ import (
 
 // FormDumper logs to its Output request and response fields if they match their rules
 type FormDumper struct {
+	TryhardJson        bool      // If set to true, FormDumper will try to decode any body as json regardless of the content type. If an error occurs while decoding the body, it will be silently ignored and treated as empty.
+	IgnoreResponseCode bool      // If set to true, every request will be dumped, even if the associated response indicates it wasn't successful.
+	Output             io.Writer // Form data containing interesting keys will be logged to Output.
 	keywordSets        []keywordSet
-	TryhardJson        bool
-	IgnoreResponseCode bool
-	Output             io.Writer
 	maxSizer
 }
 

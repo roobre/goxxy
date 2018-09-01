@@ -23,7 +23,7 @@ func (mf MiddlewareFunc) Middleware(handler http.Handler) http.Handler {
 
 // Mangler is anything which can take an http.Response, do something with it, and then return it.
 // Manglers which read Response.Body must care of leaving it untouched in the response they return, to ensure other
-//  manglers don't read partial responses.
+// manglers don't read partial responses.
 type Mangler interface {
 	Mangle(response *http.Response) *http.Response
 }
@@ -53,8 +53,8 @@ func (mf MatcherFunc) Match(r *http.Request) bool {
 
 // Goxxy is an http proxy which applies changes to requests and responses before and after sending them to the original server.
 type Goxxy struct {
-	Client      *http.Client
-	ErrHandler  http.Handler
+	Client      *http.Client // http.Client Goxxy will use to send requests upstream
+	ErrHandler  http.Handler // ErrHandler will be invoked if the request made with Client fails with a non-recoverable error (e.g. NXDOMAIN, timeout, etc.)
 	middlewares []Middleware
 	manglers    []Mangler
 	matchers    []Matcher
