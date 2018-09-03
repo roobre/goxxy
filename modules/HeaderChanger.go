@@ -25,9 +25,9 @@ func (ha HeaderChanger) Mangle(response *http.Response) *http.Response {
 func (ha HeaderChanger) changeHeaders(headers http.Header) {
 	for key, value := range ha {
 		if strings.HasPrefix(key, "-") {
-			headers.Del(key)
+			headers.Del(key[1:])
 		} else if strings.HasPrefix(key, "+") {
-			headers.Add(key, value)
+			headers.Add(key[1:], value)
 		} else {
 			headers.Set(key, value)
 		}
