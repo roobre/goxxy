@@ -39,7 +39,7 @@ func (rm *RegexMangler) AddBodyRegex(search, replace string) *RegexMangler {
 func (rm *RegexMangler) Middleware(handler http.Handler) http.Handler {
 	// TODO: Support editing body of the request too
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rm.changeHeaders(r.Header)
+		rm.mangleHeaders(r.Header)
 
 		handler.ServeHTTP(w, r)
 	})
@@ -50,7 +50,7 @@ func (rm *RegexMangler) Mangle(response *http.Response) *http.Response {
 		return response
 	}
 
-	rm.changeHeaders(response.Header)
+	rm.mangleHeaders(response.Header)
 
 	// TODO: Separate this
 	// Check len since we're copying body here
@@ -68,7 +68,7 @@ func (rm *RegexMangler) Mangle(response *http.Response) *http.Response {
 	return response
 }
 
-func (rm *RegexMangler) changeHeaders(header http.Header) {
+func (rm *RegexMangler) mangleHeaders(header http.Header) {
 	for headerName, valueRegexes := range rm.headerRegexes {
 		for name, headers := range header {
 			// TODO: Paralelize this
