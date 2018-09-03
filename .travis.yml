@@ -8,16 +8,15 @@ matrix:
   - go: tip
 
 install:
-- # Skip
-
-script:
 - mkdir -p $GOPATH/src/roob.re/
 - mv $PWD $GOPATH/src/roob.re/goxxy
 - cd $GOPATH/src/roob.re/goxxy
 - go get -t -v ./...
+
+script:
 - go vet ./...
 - go build
-- go test -race -coverprofile=coverage.txt -covermode=atomic ./ ./tests ./modules
+- go test -race -cover -coverprofile=coverage.txt -coverpkg=./,./modules ./...
 
 after_success:
 - bash <(curl -s https://codecov.io/bash)
