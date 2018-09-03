@@ -26,7 +26,7 @@ func TestHeaderChangerSet(t *testing.T) {
 	}
 
 	if len(headers) != 2 {
-		t.Error("Number of headers is not as expected: %v", headers)
+		t.Errorf("Number of headers is not as expected: %v", headers)
 	}
 }
 
