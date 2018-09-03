@@ -11,7 +11,7 @@ import (
 
 func TestCopyBody(t *testing.T) {
 	constBuffer := ioutil.NopCloser(strings.NewReader(tests.ResponseHTML))
-	resp := http.Response{Body: constBuffer}
+	resp := http.Response{Body: constBuffer, ContentLength: -1}
 
 	//	First call to CopyBody should assign a new buffer
 	body := CopyBody(&resp)
@@ -46,6 +46,7 @@ func TestCopyBody(t *testing.T) {
 
 	// Replace body and re-check
 	oldBody = resp.Body
+	oldBody.Close() // Just for the coverage
 	resp.Body = ioutil.NopCloser(bytes.NewReader(body))
 	body = CopyBody(&resp)
 	if bytes.Compare(body, []byte(tests.ResponseHTML)) != 0 {
