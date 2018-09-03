@@ -51,17 +51,22 @@ func TestHTMLManglerEdgeCases(t *testing.T) {
 	htmlMangler := HTMLMangler{}
 
 	response := tests.GetResponse()
-	response.ContentLength = defaultResponseMaxSize + 2
+	prevResponse := response
 	response = htmlMangler.Mangle(response)
+	if response.Body != prevResponse.Body {
+		t.Error("Response body unnecessarily unmodified, empty modifier list")
+	}
 
+	response.ContentLength = defaultResponseMaxSize + 2
+	prevResponse = response
+	response = htmlMangler.Mangle(response)
 	htmlMangler.AddModifier(HTMLModifierFunc(linkReplacer))
-
 	response = htmlMangler.Mangle(response)
 
 	buf := bytes.Buffer{}
 	io.Copy(&buf, response.Body)
 
-	if bytes.Compare(buf.Bytes(), []byte(tests.ResponseHTML)) != 0 {
+	if response.Body != prevResponse.Body || bytes.Compare(buf.Bytes(), []byte(tests.ResponseHTML)) != 0 {
 		t.Error("Response unmodified despite advertised content length")
 	}
 }
