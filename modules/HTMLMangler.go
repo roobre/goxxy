@@ -1,6 +1,7 @@
 package modules // import "roob.re/goxxy/modules"
 
 import (
+	"bytes"
 	"github.com/PuerkitoBio/goquery"
 	"io/ioutil"
 	"log"
@@ -42,9 +43,11 @@ func (h *HTMLMangler) Mangle(response *http.Response) *http.Response {
 		return response
 	}
 
-	document, err := goquery.NewDocumentFromReader(response.Body)
+	body := CopyBody(response)
+	document, err := goquery.NewDocumentFromReader(bytes.NewReader(body))
 	if err != nil {
 		log.Printf("error while building goquery document, response sent unmodified: %s\n", err.Error())
+		return response
 	}
 
 	for _, modifier := range h.modifiers {

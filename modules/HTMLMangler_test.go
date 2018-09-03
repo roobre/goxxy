@@ -54,7 +54,7 @@ func TestHTMLManglerEdgeCases(t *testing.T) {
 	prevResponse := response
 	response = htmlMangler.Mangle(response)
 	if response.Body != prevResponse.Body {
-		t.Error("Response body unnecessarily unmodified, empty modifier list")
+		t.Error("Response body unnecessarily modified, empty modifier list")
 	}
 
 	response.ContentLength = defaultResponseMaxSize + 2
