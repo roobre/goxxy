@@ -1,13 +1,17 @@
-package goxxy
+package goxxy // import "roob.re/goxxy"
 
 import (
 	"io"
 	"log"
 	"net/http"
+	"time"
 )
 
-var nopGoxxy = Goxxy{Client: http.DefaultClient}
+var defaultClient = &http.Client{Timeout: 8 * time.Second}
+var nopGoxxy = Goxxy{Client: defaultClient}
 
+// Middleware is the de-facto standard interface for http middleware: Receives a handler, and returns another (typically a closure).
+// Middlewares in Goxxy are used to modify a request before it is sent to the final server.
 type Middleware interface {
 	Middleware(handler http.Handler) http.Handler
 }
@@ -17,6 +21,9 @@ func (mf MiddlewareFunc) Middleware(handler http.Handler) http.Handler {
 	return mf(handler)
 }
 
+// Mangler is anything which can take an http.Response, do something with it, and then return it.
+// Manglers which read Response.Body must care of leaving it untouched in the response they return, to ensure other
+// manglers don't read partial responses.
 type Mangler interface {
 	Mangle(response *http.Response) *http.Response
 }
@@ -26,68 +33,121 @@ func (mf ManglerFunc) Mangle(response *http.Response) *http.Response {
 	return mf(response)
 }
 
-type Matcher interface {
-	Match(r *http.Request) bool
+// A module is anything which can operate both as a Middleware and as a Mangler
+// This is, for now, unused. But I wanted to coin the term, for documentation readability purposes
+type Module interface {
+	Mangler
+	Middleware
 }
+
+// Matcher is anything which can discern if a request should be intercepted or not
+type Matcher interface {
+	Match(*http.Request) bool
+}
+
 type MatcherFunc func(r *http.Request) bool
 
 func (mf MatcherFunc) Match(r *http.Request) bool {
 	return mf(r)
 }
 
+// Goxxy is an http proxy which applies changes to requests and responses before and after sending them to the original server.
 type Goxxy struct {
-	Client      *http.Client
-	ErrHandler  http.Handler
+	Client      *http.Client // http.Client Goxxy will use to send requests upstream
+	ErrHandler  http.Handler // ErrHandler will be invoked if the request made with Client fails with a non-recoverable error (e.g. NXDOMAIN, timeout, etc.)
 	middlewares []Middleware
 	manglers    []Mangler
 	matchers    []Matcher
+	children    []Goxxy
 }
 
+// New returns a fresh instance of Goxxy, with the default HTTP Client.
 func New() *Goxxy {
-	return &Goxxy{Client: http.DefaultClient}
+	return &Goxxy{Client: defaultClient}
 }
 
+// AddMiddleware inserts a Module which will read and/or modify request before they are sent upstream
 func (g *Goxxy) AddMiddleware(mw Middleware) {
 	g.middlewares = append(g.middlewares, mw)
 }
+
+// AddMiddlewareFunc inserts a Module which will read and/or modify request before they are sent upstream
 func (g *Goxxy) AddMiddlewareFunc(mw MiddlewareFunc) {
 	g.middlewares = append(g.middlewares, mw)
 }
 
+// AddMangler inserts a Module which will read and/or modify responses after they're read from the target server and before they are sent back to the client
 func (g *Goxxy) AddMangler(mg Mangler) {
 	g.manglers = append(g.manglers, mg)
 }
+
+// AddManglerFunc inserts a Module which will read and/or modify responses after they're read from the target server and before they are sent back to the client
 func (g *Goxxy) AddManglerFunc(mg ManglerFunc) {
 	g.manglers = append(g.manglers, mg)
 }
 
-func (g *Goxxy) Match(r *http.Request) http.Handler {
-	if len(g.matchers) == 0 {
-		return http.HandlerFunc(g.proxy)
-	}
+// Match adds a new matcher, which can discern if a request should be handled by this proxy or not. Multiple Matchers are OR'ed together.
+// A Goxxy with no Matchers will match anything, but give priority to its children.
+func (g *Goxxy) Match(m Matcher) {
+	g.matchers = append(g.matchers, m)
+}
 
-	for _, m := range g.matchers {
-		if m.Match(r) {
-			handler, isHandler := m.(http.Handler)
-			if isHandler {
-				return handler
-			} else {
-				return http.HandlerFunc(g.proxy)
-			}
-		}
-	}
+// MatchFunc adds a new matcher, which can discern if a request should be handled by this proxy or not. Multiple Matchers are OR'ed together.
+func (g *Goxxy) MatchFunc(m MatcherFunc) {
+	g.matchers = append(g.matchers, m)
+}
 
-	return http.HandlerFunc(nopGoxxy.proxy)
+// Child creates adds a new child Goxxy and returns it.
+func (g *Goxxy) Child() *Goxxy {
+	g.children = append(g.children, Goxxy{Client: g.Client, ErrHandler: g.ErrHandler})
+	return &g.children[len(g.children)-1]
 }
 
 func (g *Goxxy) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
-	handler := g.Match(r)
+	handler := g.demux(r)
+
+	if handler == nil {
+		log.Printf("Nothing matched `%s`, leaving intact", r.Method+" "+r.Host+r.RequestURI)
+		nopGoxxy.proxy(rw, r)
+		return
+	}
 
 	for i := len(g.middlewares) - 1; i >= 0; i-- {
 		handler = g.middlewares[i].Middleware(g)
 	}
 
 	handler.ServeHTTP(rw, r)
+}
+
+func (g *Goxxy) demux(r *http.Request) http.Handler {
+	var handler http.Handler = nil
+
+	if len(g.matchers) == 0 {
+		if len(g.children) == 0 {
+			// Return inmediately if empty
+			return http.HandlerFunc(g.proxy)
+		}
+		// Default as myself if no matchers
+		handler = http.HandlerFunc(g.proxy)
+	}
+
+	// Store myself if I match, noop for empty list
+	for _, c := range g.matchers {
+		if c.Match(r) {
+			handler = http.HandlerFunc(g.proxy)
+			break
+		}
+	}
+
+	// Overwrite with children if they match
+	for _, c := range g.children {
+		if childHandler := c.demux(r); childHandler != nil {
+			handler = childHandler
+			break
+		}
+	}
+
+	return handler
 }
 
 func (g *Goxxy) proxy(rw http.ResponseWriter, r *http.Request) {
@@ -100,7 +160,7 @@ func (g *Goxxy) proxy(rw http.ResponseWriter, r *http.Request) {
 
 	url += r.Host + r.RequestURI
 
-	log.Printf("Handling request to %s", url)
+	//log.Printf("Handling request to %s", url)
 	newreq, _ := http.NewRequest(r.Method, url, r.Body)
 
 	response, err := g.Client.Do(newreq)

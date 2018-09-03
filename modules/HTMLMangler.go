@@ -1,4 +1,4 @@
-package modules
+package modules // import "roob.re/goxxy/modules"
 
 import (
 	"github.com/PuerkitoBio/goquery"
@@ -8,6 +8,18 @@ import (
 	"strings"
 )
 
+// HTMLModifier is anything capable of operating with a goquery.Document. Changes applied to the document will be reflected in the response set to the client
+type HTMLModifier interface {
+	ModifyHTML(doc *goquery.Document)
+}
+
+type HTMLModifierFunc func(doc *goquery.Document)
+
+func (f HTMLModifierFunc) ModifyHTML(doc *goquery.Document) {
+	f(doc)
+}
+
+// HTMLMangler is a convenience wrapper around goquery, which allows to apply Modifiers to the responses.
 type HTMLMangler struct {
 	modifiers []HTMLModifier
 	maxSizer
@@ -42,14 +54,4 @@ func (h *HTMLMangler) Mangle(response *http.Response) *http.Response {
 	response.Body.Close()
 	response.Body = ioutil.NopCloser(ioutil.NopCloser(strings.NewReader(document.Text())))
 	return response
-}
-
-type HTMLModifier interface {
-	ModifyHTML(doc *goquery.Document)
-}
-
-type HTMLModifierFunc func(doc *goquery.Document)
-
-func (f HTMLModifierFunc) ModifyHTML(doc *goquery.Document) {
-	f(doc)
 }

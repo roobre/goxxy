@@ -1,4 +1,4 @@
-package modules
+package modules // import "roob.re/goxxy/modules"
 
 import (
 	"encoding/json"
@@ -8,11 +8,12 @@ import (
 	"strings"
 )
 
+// FormDumper logs to its Output request and response fields if they match their rules
 type FormDumper struct {
+	TryhardJson        bool      // If set to true, FormDumper will try to decode any body as json regardless of the content type. If an error occurs while decoding the body, it will be silently ignored and treated as empty.
+	IgnoreResponseCode bool      // If set to true, every request will be dumped, even if the associated response indicates it wasn't successful.
+	Output             io.Writer // Form data containing interesting keys will be logged to Output.
 	keywordSets        []keywordSet
-	TryhardJson        bool
-	IgnoreResponseCode bool
-	Output             io.Writer
 	maxSizer
 }
 
@@ -26,10 +27,12 @@ const (
 	keysetAll
 )
 
+// Add a set of keywords which will be compared against the requests and responses passing through the mangler. Those which contain all the keywords will be logged
 func (d *FormDumper) All(keywords ...string) {
 	d.add(keysetAll, keywords)
 }
 
+// Add a set of keywords which will be compared against the requests and responses passing through the mangler. Those which contain any of the keywords will be logged
 func (d *FormDumper) Any(keywords ...string) {
 	d.add(keysetAny, keywords)
 }
@@ -58,7 +61,7 @@ func (d *FormDumper) Mangle(response *http.Response) *http.Response {
 
 		if d.TryhardJson || strings.Contains(response.Header.Get("content-type"), "json") {
 			if response.ContentLength <= d.maxSize() {
-				buffer := copyBody(response)
+				buffer := CopyBody(response)
 				json.Unmarshal(buffer, keys)
 			}
 		}
