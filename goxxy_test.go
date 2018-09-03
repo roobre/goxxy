@@ -1,13 +1,10 @@
 package goxxy
 
-import "testing"
+import (
+	"testing"
+)
 
-func TestDemux(t *testing.T) {
-	New()
-	//	TODO
-}
-
-func TestProxy(t *testing.T) {
+func TestGoxxy(t *testing.T) {
 	New()
 	//	TODO
 }

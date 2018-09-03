@@ -1,17 +1,17 @@
-package tests
+package modules
 
 import (
 	"bytes"
 	"fmt"
-	"roob.re/goxxy/modules"
+	"roob.re/goxxy/tests"
 	"testing"
 )
 
 func TestEchoMangler(t *testing.T) {
 	buffer := bytes.Buffer{}
-	mangler := modules.EchoMangler("Testing", &buffer)
+	mangler := EchoMangler("Testing", &buffer)
 
-	response := GetResponse()
+	response := tests.GetResponse()
 	mangler.Mangle(response)
 
 	if bytes.Compare(buffer.Bytes(), []byte(fmt.Sprintf("Testing %s\n", response.Request.URL.String()))) != 0 {
