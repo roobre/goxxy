@@ -3,7 +3,6 @@ package modules // import "roob.re/goxxy/modules"
 import (
 	"bytes"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"regexp"
 )
@@ -63,7 +62,7 @@ func (rm *RegexMangler) Mangle(response *http.Response) *http.Response {
 		fullBody := CopyBody(response)
 
 		for _, regex := range rm.bodyRegexes {
-			log.Printf("Searching for %s", regex.Regexp.String())
+			//log.Printf("Searching for %s", regex.Regexp.String())
 			fullBody = regex.Regexp.ReplaceAll(fullBody, []byte(regex.Replace))
 		}
 
