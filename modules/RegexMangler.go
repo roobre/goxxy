@@ -23,6 +23,10 @@ type regexpReplace struct {
 // AddHeaderRegex adds a new regex which will be applied to the headers sent in the response. header is the header name and must match verbatim.
 func (rm *RegexMangler) AddHeaderRegex(header, search, replace string) *RegexMangler {
 	searchRegex := regexp.MustCompile(search)
+
+	if rm.headerRegexes == nil {
+		rm.headerRegexes = make(map[string][]regexpReplace)
+	}
 	rm.headerRegexes[header] = append(rm.headerRegexes[header], regexpReplace{searchRegex, replace})
 
 	return rm
@@ -31,6 +35,7 @@ func (rm *RegexMangler) AddHeaderRegex(header, search, replace string) *RegexMan
 // AddBodyRegex adds a new regex which will be applied to the response body.
 func (rm *RegexMangler) AddBodyRegex(search, replace string) *RegexMangler {
 	searchRegex := regexp.MustCompile(search)
+
 	rm.bodyRegexes = append(rm.bodyRegexes, regexpReplace{searchRegex, replace})
 
 	return rm
