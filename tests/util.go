@@ -1,6 +1,6 @@
 package tests
 
-// common.go contains utilities to generate mock requests and responses
+// util.go contains utilities to generate mock requests and responses
 
 import (
 	"bytes"
