@@ -7,12 +7,6 @@ import (
 	"net/http"
 )
 
-// TODO
-// Configurer will be an interface for modules which can be configured from text files, instead of programatically.
-type Configurer interface {
-	Configure(map[string]interface{})
-}
-
 const defaultResponseBufferSize = 1024
 const defaultResponseMaxSize = 1024 * 1024 * 1024
 
