@@ -3,7 +3,6 @@ package modules // import "roob.re/goxxy/modules"
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -27,6 +26,15 @@ type byter interface {
 	UnreadByte() error
 }
 
+type bufferCloser struct {
+	*bytes.Buffer
+}
+
+func (b bufferCloser) Close() error {
+	b.Buffer.Reset()
+	return nil
+}
+
 // CopyBody reads the whole response body into a io.Buffer, and returns the slice of bytes from it as well as the reader buffer. It also sets the response body to the new Buffer.
 // Warning: changes to the returned byte slice may not be reflected into the response automatically, if it is resliced somewhere. If you're unsure, re-set response.Body to a new buffer from the slice again.
 func CopyBody(response *http.Response) (body []byte) {
@@ -43,6 +51,6 @@ func CopyBody(response *http.Response) (body []byte) {
 	io.Copy(buffer, response.Body)
 	response.Body.Close()
 
-	response.Body = ioutil.NopCloser(buffer)
+	response.Body = bufferCloser{buffer}
 	return buffer.Bytes()
 }
