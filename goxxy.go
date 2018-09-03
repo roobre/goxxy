@@ -140,8 +140,8 @@ func (g *Goxxy) demux(r *http.Request) http.Handler {
 	}
 
 	// Overwrite with children if they match
-	for _, c := range g.children {
-		if childHandler := c.demux(r); childHandler != nil {
+	for _, child := range g.children {
+		if childHandler := child.demux(r); childHandler != nil {
 			handler = childHandler
 			break
 		}
