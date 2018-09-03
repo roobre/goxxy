@@ -9,8 +9,8 @@ func HeaderMatcher(name, valueRegex string) Matcher {
 	// TODO: Proper error log
 	regex := regexp.MustCompile(valueRegex)
 	return MatcherFunc(func(r *http.Request) bool {
-		for name, value := range r.Header {
-			if name == name && regex.MatchString(value[0]) {
+		for headerName, value := range r.Header {
+			if name == headerName && regex.MatchString(value[0]) {
 				return true
 			}
 		}
