@@ -2,9 +2,7 @@ language: go
 
 matrix:
   include:
-  - go: 1.8
-  - go: 1.9
-  - go: 1.10
+  - go: "1.10"
   - go: tip
   allow_failures:
   - go: tip
@@ -13,6 +11,9 @@ install:
 - # Skip
 
 script:
+- mkdir -p $GOPATH/src/roob.re/
+- mv $PWD $GOPATH/src/roob.re/goxxy
+- cd $GOPATH/src/roob.re/goxxy
 - go get -t -v ./...
 - go vet ./...
 - go build
