@@ -11,9 +11,12 @@ import (
 	"time"
 )
 
-const sampleUrl = "http://www.example.org/items"
+const RequestURL = "http://www.example.org/items"
+const RequestPostdata = "testing=1&example=1&valid=0&testString=hewwo+world"
+const RequestUA = "Test mocker"
 
-const sampleHTML = `
+const ResponseServer = "mock test server"
+const ResponseHTML = `
 <html>
 <head>
 	<title>Sample webpage</title>
@@ -28,7 +31,7 @@ const sampleHTML = `
 </html>
 `
 
-var sampleJson = struct {
+var ResponseJSON = struct {
 	Name    string
 	Count   int
 	Value   string
@@ -43,33 +46,30 @@ var sampleJson = struct {
 }
 
 func Get() *http.Request {
-	req, err := http.NewRequest(http.MethodGet, sampleUrl, bytes.NewReader(nil))
+	req, err := http.NewRequest(http.MethodGet, RequestURL, bytes.NewReader(nil))
 	if err != nil {
 		panic(err)
 	}
 
-	req.Header.Add("User-Agent", "Test mocker")
-	req.Header.Add("X-Testing", "Testing")
+	req.Header.Add("User-Agent", RequestUA)
 
 	return req
 }
 
 func Post() *http.Request {
-	postdata := "testing=1&example=1&valid=0&testString=hewwo+world"
-	req, err := http.NewRequest(http.MethodPost, sampleUrl, strings.NewReader(postdata))
+	req, err := http.NewRequest(http.MethodPost, RequestURL, strings.NewReader(RequestPostdata))
 	if err != nil {
 		panic(err)
 	}
 
-	req.Header.Add("User-Agent", "Test mocker")
-	req.Header.Add("X-Testing", "Testing")
+	req.Header.Add("User-Agent", RequestUA)
 
 	return req
 }
 
 func PostJson() *http.Request {
 	r := Post()
-	buf, err := json.Marshal(sampleJson)
+	buf, err := json.Marshal(ResponseJSON)
 	if err != nil {
 		panic(err)
 	}
@@ -81,7 +81,7 @@ func PostJson() *http.Request {
 
 func ResponseBoilerplate() *http.Response {
 	h := http.Header{}
-	h.Set("Server", "mock test server")
+	h.Set("Server", ResponseServer)
 	h.Set("Date", time.Now().Format(time.RFC1123))
 	return &http.Response{
 		Proto:      "HTTP/1.1",
@@ -96,8 +96,8 @@ func ResponseBoilerplate() *http.Response {
 func GetResponse() *http.Response {
 	resp := ResponseBoilerplate()
 	resp.Request = Get()
-	resp.ContentLength = int64(len(sampleHTML))
-	resp.Body = ioutil.NopCloser(strings.NewReader(sampleHTML))
+	resp.ContentLength = int64(len(ResponseHTML))
+	resp.Body = ioutil.NopCloser(strings.NewReader(ResponseHTML))
 
 	return resp
 }
@@ -106,7 +106,7 @@ func GetResponseJSON() *http.Response {
 	resp := ResponseBoilerplate()
 	resp.Request = Get()
 
-	buf, err := json.Marshal(sampleJson)
+	buf, err := json.Marshal(ResponseJSON)
 	if err != nil {
 		panic(err)
 	}
