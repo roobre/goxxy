@@ -90,7 +90,7 @@ func TestHeaderChangerRequest(t *testing.T) {
 	changer["-Date"] = ""
 	changer["+User-Agent"] = "mangled"
 	changer["New"] = "NewHeader"
-	handler := changer.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	changer.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Date") != "" {
 			t.Error("Date header wasnt removed")
 		}
@@ -102,9 +102,7 @@ func TestHeaderChangerRequest(t *testing.T) {
 		if r.Header.Get("New") != "NewHeader" {
 			t.Error("New header wasn't set")
 		}
-	}))
-
-	handler.ServeHTTP(httptest.NewRecorder(), request)
+	})).ServeHTTP(httptest.NewRecorder(), request)
 }
 
 func TestHeaderChangerResponse(t *testing.T) {

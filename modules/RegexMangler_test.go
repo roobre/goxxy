@@ -2,8 +2,10 @@ package modules
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"regexp"
 	"roob.re/goxxy/tests"
 	"strings"
@@ -11,19 +13,19 @@ import (
 )
 
 func TestRegexManglerHeadersRequest(t *testing.T) {
+	const ua = "Mozilla/5.0 (X11; Linux x86_64; rv:63.0) Gecko/20100101 Firefox/63.0"
 	rm := RegexMangler{}
 	rm.AddHeaderRegex("User-Agent", "Firefox", "Roobreisafox")
 
 	req := tests.Get()
-	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64; rv:63.0) Gecko/20100101 Firefox/63.0")
-
-	prevUa := req.Header.Get("User-Agent")
+	req.Header.Set("User-Agent", ua)
 
 	rm.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("User-Agent") != strings.Replace(prevUa, "Firefox", "Roobreisafox", 0) {
+		if r.Header.Get("User-Agent") != strings.Replace(ua, "Firefox", "Roobreisafox", -1) {
 			t.Error("Replacing UA Failed")
+			fmt.Println(r.Header.Get("User-Agent"))
 		}
-	}))
+	})).ServeHTTP(httptest.NewRecorder(), req)
 }
 
 func TestRegexManglerHeadersResponse(t *testing.T) {
