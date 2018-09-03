@@ -62,7 +62,7 @@ func (d *FormDumper) Mangle(response *http.Response) *http.Response {
 		if d.TryhardJson || strings.Contains(response.Header.Get("content-type"), "json") {
 			if response.ContentLength <= d.maxSize() {
 				buffer := CopyBody(response)
-				json.Unmarshal(buffer, keys)
+				json.Unmarshal(buffer, &keys)
 			}
 		}
 
