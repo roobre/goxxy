@@ -104,7 +104,7 @@ func (g *Goxxy) Child() *Goxxy {
 }
 
 func (g *Goxxy) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
-	handler := g.demux(r)
+	var handler http.Handler = http.HandlerFunc(g.demux(r).proxy)
 
 	if handler == nil {
 		log.Printf("Nothing matched `%s`, leaving intact", r.Method+" "+r.Host+r.RequestURI)
@@ -119,28 +119,34 @@ func (g *Goxxy) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	handler.ServeHTTP(rw, r)
 }
 
-func (g *Goxxy) demux(r *http.Request) http.Handler {
-	var handler http.Handler = nil
+func (g *Goxxy) demux(r *http.Request) *Goxxy {
+	var handler *Goxxy = nil
 
 	if len(g.matchers) == 0 {
 		if len(g.children) == 0 {
 			// Return inmediately if empty
-			return http.HandlerFunc(g.proxy)
+			return g
 		}
 		// Default as myself if no matchers
-		handler = http.HandlerFunc(g.proxy)
-	}
+		handler = g
+	} else {
+		// Store myself if I match
+		for _, c := range g.matchers {
+			if c.Match(r) {
+				handler = g
+				break
+			}
+		}
 
-	// Store myself if I match, noop for empty list
-	for _, c := range g.matchers {
-		if c.Match(r) {
-			handler = http.HandlerFunc(g.proxy)
-			break
+		// Return if non-empty list of matchers and not matched any
+		if handler == nil {
+			return nil
 		}
 	}
 
 	// Overwrite with children if they match
-	for _, child := range g.children {
+	for i := range g.children {
+		child := &g.children[i]
 		if childHandler := child.demux(r); childHandler != nil {
 			handler = childHandler
 			break
