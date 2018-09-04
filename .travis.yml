@@ -8,6 +8,10 @@ matrix:
   allow_failures:
   - go: tip
 
+branches:
+  except:
+  - wip
+
 install:
 - mkdir -p $GOPATH/src/roob.re/
 - mv $PWD $GOPATH/src/roob.re/goxxy
