@@ -117,3 +117,7 @@ func GetResponseJSON() *http.Response {
 
 	return resp
 }
+
+func HTMLHandler(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte(ResponseHTML))
+}
