@@ -1,7 +1,6 @@
 package goxxy // import "roob.re/goxxy"
 
 import (
-	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -54,7 +53,7 @@ func (mf MatcherFunc) Match(r *http.Request) bool {
 
 func noRedirectsPolicy(r *http.Request, rr []*http.Request) error {
 	if len(rr) > 1 {
-		return errors.New("")
+		return http.ErrUseLastResponse
 	}
 	return nil
 }
