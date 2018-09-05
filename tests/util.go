@@ -5,8 +5,11 @@ package tests
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -120,4 +123,38 @@ func GetResponseJSON() *http.Response {
 
 func HTMLHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(ResponseHTML))
+}
+
+func CompareResponses(r1, r2 *http.Response) error {
+	if r1.StatusCode != r2.StatusCode || r1.Status != r2.Status {
+		return errors.New("status code differ between original and proxied")
+	}
+
+	if r1.Proto != r2.Proto {
+		return errors.New("http protocols differ")
+	}
+
+	if r1.ContentLength != r2.ContentLength {
+		return errors.New("http content-length differ")
+	}
+
+	if !reflect.DeepEqual(r1.Header, r2.Header) {
+		return errors.New("headers differ between original and proxied")
+	}
+
+	origBuffer := &bytes.Buffer{}
+	io.Copy(origBuffer, r1.Body)
+
+	respBuffer := &bytes.Buffer{}
+	io.Copy(respBuffer, r2.Body)
+
+	if !bytes.Equal(origBuffer.Bytes(), respBuffer.Bytes()) {
+		return errors.New("response code differs between original and proxied")
+	}
+
+	if !reflect.DeepEqual(r1.Trailer, r2.Trailer) {
+		return errors.New("headers differ between original and proxied")
+	}
+
+	return nil
 }
