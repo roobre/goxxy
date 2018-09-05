@@ -122,22 +122,32 @@ func (g *Goxxy) FollowRedirects(follow bool) {
 	}
 }
 
-func (g *Goxxy) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
-	var handler http.Handler = http.HandlerFunc(g.demux(r).proxy)
+// Mangle returns a response after applying all manglers to the original one.
+// Mangle is exported so Goxxy implements Mangler if needed, but it is not intended to be used from the outside in normal cases
+func (g *Goxxy) Mangle(response *http.Response) *http.Response {
+	// Do not invoke manglers if it's a redirect and MangleRedirects == false
+	if g.MangleRedirects || !(response.StatusCode >= 300 && response.StatusCode < 400) {
+		for i := range g.manglers {
+			response = g.manglers[i].Mangle(response)
+		}
+	}
 
-	if handler == nil {
+	return response
+}
+
+func (g *Goxxy) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+	handlerGoxxy := g.demux(r)
+
+	if handlerGoxxy == nil {
 		log.Printf("Nothing matched `%s`, leaving intact", r.Method+" "+r.Host+r.RequestURI)
 		nopGoxxy.proxy(rw, r)
 		return
 	}
 
-	for i := len(g.middlewares) - 1; i >= 0; i-- {
-		handler = g.middlewares[i].Middleware(g)
-	}
-
-	handler.ServeHTTP(rw, r)
+	handlerGoxxy.proxyWithMiddleware().ServeHTTP(rw, r)
 }
 
+// Demux looks at matchers and children and returns a pointer to the Goxxy that should manage a given request
 func (g *Goxxy) demux(r *http.Request) *Goxxy {
 	var handler *Goxxy = nil
 
@@ -175,6 +185,17 @@ func (g *Goxxy) demux(r *http.Request) *Goxxy {
 	return handler
 }
 
+// proxyWithMiddleware returns the goxxy.proxy wrapped around g.middlewares
+func (g *Goxxy) proxyWithMiddleware() http.Handler {
+	var handler http.Handler = http.HandlerFunc(g.proxy)
+	for i := len(g.middlewares) - 1; i >= 0; i-- {
+		handler = g.middlewares[i].Middleware(g)
+	}
+
+	return handler
+}
+
+// proxy makes a request to the upstream servers, mangles it, and echoes the response to the writer
 func (g *Goxxy) proxy(rw http.ResponseWriter, r *http.Request) {
 	var url string
 	if r.TLS != nil {
@@ -201,13 +222,10 @@ func (g *Goxxy) proxy(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Do not invoke manglers if it's a redirect and MangleRedirects == false
-	if g.MangleRedirects || !(response.StatusCode >= 300 && response.StatusCode < 400) {
-		for i := range g.manglers {
-			response = g.manglers[i].Mangle(response)
-		}
-	}
+	copyResponse(rw, g.Mangle(response))
+}
 
+func copyResponse(rw http.ResponseWriter, response *http.Response) {
 	for name, values := range response.Header {
 		for _, value := range values {
 			rw.Header().Add(name, value)
