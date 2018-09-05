@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-var defaultClient = &http.Client{Timeout: 8 * time.Second, CheckRedirect: noRedirectsPolicy}
+var defaultClient = &http.Client{Timeout: 8 * time.Second, CheckRedirect: noRedirectsPolicy, Jar: nil}
 var nopGoxxy = Goxxy{Client: defaultClient}
 
 // Middleware is the de-facto standard interface for http middleware: Receives a handler, and returns another (typically a closure).
