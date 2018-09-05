@@ -134,6 +134,15 @@ func (g *Goxxy) Mangle(response *http.Response) *http.Response {
 	return response
 }
 
+// proxyWithMiddleware returns the provided handler wrapped around g.middlewares
+func (g *Goxxy) Middleware(handler http.Handler) http.Handler {
+	for i := len(g.middlewares) - 1; i >= 0; i-- {
+		handler = g.middlewares[i].Middleware(g)
+	}
+
+	return handler
+}
+
 func (g *Goxxy) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	handlerGoxxy := g.demux(r)
 
@@ -143,7 +152,7 @@ func (g *Goxxy) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	handlerGoxxy.proxyWithMiddleware().ServeHTTP(rw, r)
+	handlerGoxxy.Middleware(http.HandlerFunc(handlerGoxxy.proxy)).ServeHTTP(rw, r)
 }
 
 // Demux looks at matchers and children and returns a pointer to the Goxxy that should manage a given request
@@ -179,16 +188,6 @@ func (g *Goxxy) demux(r *http.Request) *Goxxy {
 			handler = childHandler
 			break
 		}
-	}
-
-	return handler
-}
-
-// proxyWithMiddleware returns the goxxy.proxy wrapped around g.middlewares
-func (g *Goxxy) proxyWithMiddleware() http.Handler {
-	var handler http.Handler = http.HandlerFunc(g.proxy)
-	for i := len(g.middlewares) - 1; i >= 0; i-- {
-		handler = g.middlewares[i].Middleware(g)
 	}
 
 	return handler
