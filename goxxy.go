@@ -215,6 +215,13 @@ func (g *Goxxy) proxy(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// This is a low-level error, so we just hijack the connection and forcefully close it
+		if hijacker, isHijacker := rw.(http.Hijacker); isHijacker {
+			conn, _, _ := hijacker.Hijack()
+			conn.Close()
+			return
+		}
+
 		rw.WriteHeader(http.StatusInternalServerError)
 		log.Printf("error during request: %v", err)
 		return
