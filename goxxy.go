@@ -1,13 +1,14 @@
 package goxxy // import "roob.re/goxxy"
 
 import (
+	"errors"
 	"io"
 	"log"
 	"net/http"
 	"time"
 )
 
-var defaultClient = &http.Client{Timeout: 8 * time.Second}
+var defaultClient = &http.Client{Timeout: 8 * time.Second, CheckRedirect: noRedirectsPolicy}
 var nopGoxxy = Goxxy{Client: defaultClient}
 
 // Middleware is the de-facto standard interface for http middleware: Receives a handler, and returns another (typically a closure).
@@ -51,14 +52,22 @@ func (mf MatcherFunc) Match(r *http.Request) bool {
 	return mf(r)
 }
 
+func noRedirectsPolicy(r *http.Request, rr []*http.Request) error {
+	if len(rr) > 1 {
+		return errors.New("")
+	}
+	return nil
+}
+
 // Goxxy is an http proxy which applies changes to requests and responses before and after sending them to the original server.
 type Goxxy struct {
-	Client      *http.Client // http.Client Goxxy will use to send requests upstream
-	ErrHandler  http.Handler // ErrHandler will be invoked if the request made with Client fails with a non-recoverable error (e.g. NXDOMAIN, timeout, etc.)
-	middlewares []Middleware
-	manglers    []Mangler
-	matchers    []Matcher
-	children    []Goxxy
+	Client          *http.Client // http.Client Goxxy will use to send requests upstream
+	ErrHandler      http.Handler // ErrHandler will be invoked if the request made with Client fails with a non-recoverable error (e.g. NXDOMAIN, timeout, etc.)
+	MangleRedirects bool
+	middlewares     []Middleware
+	manglers        []Mangler
+	matchers        []Matcher
+	children        []Goxxy
 }
 
 // New returns a fresh instance of Goxxy, with the default HTTP Client.
@@ -101,6 +110,16 @@ func (g *Goxxy) MatchFunc(m MatcherFunc) {
 func (g *Goxxy) Child() *Goxxy {
 	g.children = append(g.children, Goxxy{Client: g.Client, ErrHandler: g.ErrHandler})
 	return &g.children[len(g.children)-1]
+}
+
+// Goxxy won't follow redirects by default, since it can be breaking in some scenarios.
+// However, enabling it will reduce latency and bandwith usage between goxxy and the clients.
+func (g *Goxxy) FollowRedirects(follow bool) {
+	if follow {
+		g.Client.CheckRedirect = nil
+	} else {
+		g.Client.CheckRedirect = noRedirectsPolicy
+	}
 }
 
 func (g *Goxxy) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
@@ -182,9 +201,11 @@ func (g *Goxxy) proxy(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//for i := len(g.manglers) - 1; i >= 0; i-- {
-	for i := range g.manglers {
-		response = g.manglers[i].Mangle(response)
+	// Do not invoke manglers if it's a redirect and MangleRedirects == false
+	if g.MangleRedirects || !(response.StatusCode >= 300 && response.StatusCode < 400) {
+		for i := range g.manglers {
+			response = g.manglers[i].Mangle(response)
+		}
 	}
 
 	for name, values := range response.Header {
