@@ -56,7 +56,8 @@ func (h *HTMLMangler) Mangle(response *http.Response) *http.Response {
 
 	newHtml, err := document.Html()
 	if err != nil {
-		panic(err)
+		log.Printf("error rendering modified HTML, sending response unmodified")
+		return response
 	}
 
 	response.Body.Close()
