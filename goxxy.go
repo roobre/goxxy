@@ -44,7 +44,6 @@ type Module interface {
 type Matcher interface {
 	Match(*http.Request) bool
 }
-
 type MatcherFunc func(r *http.Request) bool
 
 func (mf MatcherFunc) Match(r *http.Request) bool {
@@ -143,6 +142,7 @@ func (g *Goxxy) Middleware(handler http.Handler) http.Handler {
 	return handler
 }
 
+// ServeHTTP finds the appropiate handler with demux() wraps proxy() with Middleware() and calls it
 func (g *Goxxy) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	handlerGoxxy := g.demux(r)
 
