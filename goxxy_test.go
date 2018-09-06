@@ -161,5 +161,49 @@ func TestMangle(t *testing.T) {
 }
 
 func TestMiddleware(t *testing.T) {
+	req := tests.Get()
+	rec := httptest.NewRecorder()
 
+	g := New()
+
+	handler := func(rw http.ResponseWriter, r *http.Request) {
+		rw.Write([]byte("Parent"))
+	}
+
+	g.AddMiddlewareFunc(func(handler http.Handler) http.Handler {
+		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			rw.Write([]byte("First"))
+			handler.ServeHTTP(rw, r)
+		})
+	})
+	g.Middleware(http.HandlerFunc(handler)).ServeHTTP(rec, req)
+
+	if !bytes.Equal(rec.Body.Bytes(), []byte("FirstParent")) {
+		t.Errorf("First middleware did not apply, got: %s", string(rec.Body.Bytes()))
+	}
+	rec.Body.Reset()
+
+	g.AddMiddlewareFunc(func(handler http.Handler) http.Handler {
+		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			rw.Write([]byte("Second"))
+			handler.ServeHTTP(rw, r)
+		})
+	})
+	g.Middleware(http.HandlerFunc(handler)).ServeHTTP(rec, req)
+
+	if !bytes.Equal(rec.Body.Bytes(), []byte("FirstSecondParent")) {
+		t.Errorf("First+Second middleware did not apply, got: %s", string(rec.Body.Bytes()))
+	}
+	rec.Body.Reset()
+
+	g.AddMiddleware(MiddlewareFunc(func(handler http.Handler) http.Handler {
+		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			rw.Write([]byte("Aborted"))
+		})
+	}))
+	g.Middleware(http.HandlerFunc(handler)).ServeHTTP(rec, req)
+
+	if !bytes.Equal(rec.Body.Bytes(), []byte("FirstSecondAborted")) {
+		t.Errorf("First+Second+Abort middleware did not apply, got: %s", string(rec.Body.Bytes()))
+	}
 }
