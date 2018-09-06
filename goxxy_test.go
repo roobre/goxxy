@@ -2,8 +2,12 @@ package goxxy
 
 import (
 	"bytes"
+	"fmt"
+	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"reflect"
+	"roob.re/goxxy/tests"
 	"testing"
 )
 
@@ -80,5 +84,36 @@ func TestDemux(t *testing.T) {
 	if p := proxy.demux(req); reflect.ValueOf(p).Pointer() == reflect.ValueOf(proxy).Pointer() ||
 		reflect.ValueOf(p).Pointer() != 0 {
 		t.Error("Match for something that shouldn't")
+	}
+}
+
+func TestCopyResponse(t *testing.T) {
+	rec := httptest.NewRecorder()
+	http.SetCookie(rec, &http.Cookie{Name: "TestCookie", Value: "TestCookie", MaxAge: 3600})
+	rec.Header().Add("X-Custom", "Whatever")
+	rec.WriteString(tests.ResponseHTML)
+	response := rec.Result()
+
+	rec = httptest.NewRecorder()
+	copyResponse(rec, response)
+	copiedResponse := rec.Result()
+
+	if len(copiedResponse.Cookies()) == 0 {
+		t.Error("No cookies in copied response")
+	}
+
+	if copiedResponse.Header.Get("X-Custom") != "Whatever" {
+		t.Error("Missing custom header")
+	}
+
+	// Redundant but just in case
+	if !reflect.DeepEqual(response.Header, copiedResponse.Header) {
+		t.Error("Headers were not copied correctly")
+	}
+
+	body, _ := ioutil.ReadAll(copiedResponse.Body)
+	if !bytes.Equal(body, []byte(tests.ResponseHTML)) {
+		fmt.Println(string(body))
+		t.Error("Response body differs")
 	}
 }
