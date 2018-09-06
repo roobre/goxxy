@@ -136,7 +136,7 @@ func (g *Goxxy) Mangle(response *http.Response) *http.Response {
 // proxyWithMiddleware returns the provided handler wrapped around g.middlewares
 func (g *Goxxy) Middleware(handler http.Handler) http.Handler {
 	for i := len(g.middlewares) - 1; i >= 0; i-- {
-		handler = g.middlewares[i].Middleware(g)
+		handler = g.middlewares[i].Middleware(handler)
 	}
 
 	return handler
