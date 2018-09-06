@@ -133,7 +133,7 @@ func (g *Goxxy) Mangle(response *http.Response) *http.Response {
 	return response
 }
 
-// proxyWithMiddleware returns the provided handler wrapped around g.middlewares
+// Middleware returns the provided handler wrapped around g.middlewares
 func (g *Goxxy) Middleware(handler http.Handler) http.Handler {
 	for i := len(g.middlewares) - 1; i >= 0; i-- {
 		handler = g.middlewares[i].Middleware(handler)
@@ -142,7 +142,7 @@ func (g *Goxxy) Middleware(handler http.Handler) http.Handler {
 	return handler
 }
 
-// ServeHTTP finds the appropiate handler with demux() wraps proxy() with Middleware() and calls it
+// ServeHTTP finds the appropiate Goxxy with demux(), wraps its proxy() with its Middleware() and calls it
 func (g *Goxxy) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	handlerGoxxy := g.demux(r)
 
