@@ -117,3 +117,49 @@ func TestCopyResponse(t *testing.T) {
 		t.Error("Response body differs")
 	}
 }
+
+func TestMangle(t *testing.T) {
+	var mangled *http.Response
+
+	hm1 := func(resp *http.Response) *http.Response {
+		resp.Header.Set("X-First-Header", "First")
+		return resp
+	}
+
+	hm2 := func(resp *http.Response) *http.Response {
+		resp.Header.Set("X-Second-Header", "Second")
+		return resp
+	}
+	g := New()
+
+	g.AddMangler(ManglerFunc(hm1))
+	mangled = g.Mangle(tests.GetResponse())
+	if mangled.Header.Get("X-First-Header") != "First" {
+		t.Error("Failed to apply first mangler")
+	}
+
+	g.AddManglerFunc(hm2)
+	mangled = g.Mangle(tests.GetResponse())
+	if mangled.Header.Get("X-First-Header") != "First" || mangled.Header.Get("X-Second-Header") != "Second" {
+		t.Error("Failed to apply first & second mangler")
+	}
+
+	response := tests.GetResponse()
+	response.StatusCode = 301
+
+	mangled = g.Mangle(response)
+	if mangled.Header.Get("X-First-Header") != "" || mangled.Header.Get("X-Second-Header") != "" {
+		t.Error("Mangled redirect response")
+	}
+
+	g.MangleRedirects = true
+
+	mangled = g.Mangle(response)
+	if mangled.Header.Get("X-First-Header") == "" || mangled.Header.Get("X-Second-Header") == "" {
+		t.Error("Redirect not mangled despite flag")
+	}
+}
+
+func TestMiddleware(t *testing.T) {
+
+}
